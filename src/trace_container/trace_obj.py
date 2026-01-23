@@ -1,10 +1,11 @@
 import pandas as pd
+import numpy as np
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 
 
-class TraceVisualizer:
+class Trace:
     """A class to visualize trace data from CSV files."""
     
     def __init__(self, csv_file: str):
@@ -64,3 +65,9 @@ class TraceVisualizer:
     def get_statistics(self) -> pd.DataFrame:
         """Return descriptive statistics for numeric columns."""
         return self.df.describe()
+    
+    def get_column(self, column: str) -> np.ndarray:
+        """Return a specific column from the dataframe as a numpy array."""
+        if column not in self.df.columns:
+            raise ValueError(f"Column '{column}' not found in dataframe")
+        return self.df[column].to_numpy()
