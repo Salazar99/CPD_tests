@@ -4,13 +4,13 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 from src.trace_container.trace_obj import Trace
 
-
 lr=1e-3
 latent_dim=16
 window_size=256
 batch_size=64
 epochs = 50
 
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 class SlidingWindowDataset(torch.utils.data.Dataset):
     def __init__(self, signal, window_size, stride):
@@ -35,13 +35,13 @@ class Encoder(nn.Module):
             nn.ReLU(),
             nn.Conv1d(16, 32, kernel_size=5, padding=2),
             nn.ReLU()
-        )
+        ).to(device)
         self.lstm = nn.LSTM(
             input_size=32,
             hidden_size=64,
             batch_first=True
-        )
-        self.fc = nn.Linear(64, latent_dim)
+        ).to(device)
+        self.fc = nn.Linear(64, latent_dim).to(device)
 
     def forward(self, x):
         # x: (B, 1, W)
@@ -57,17 +57,17 @@ class Decoder(nn.Module):
     def __init__(self, latent_dim, window_size):
         super().__init__()
         self.window_size = window_size
-        self.fc = nn.Linear(latent_dim, 64)
+        self.fc = nn.Linear(latent_dim, 64).to(device)
         self.lstm = nn.LSTM(
             input_size=64,
             hidden_size=32,
             batch_first=True
-        )
+        ).to(device)
         self.cnn = nn.Sequential(
             nn.Conv1d(32, 16, kernel_size=5, padding=2),
             nn.ReLU(),
             nn.Conv1d(16, 1, kernel_size=5, padding=2)
-        )
+        ).to(device)
 
     def forward(self, z):
         # z: (B, latent_dim)
@@ -90,17 +90,19 @@ class CNNLSTMAutoencoder(nn.Module):
         x_hat = self.decoder(z)
         return x_hat, z
 
-
+latentVec = []
 
 model = CNNLSTMAutoencoder(latent_dim, window_size)
 optimizer = torch.optim.Adam(model.parameters(), lr)
 criterion = nn.MSELoss()
+
 WT_trace = Trace("./tests/WT/WT_Trace_Date_repetition.csv")
-signal = WT_trace.get_column("rain")  # Replace with actual column name
+signal = torch.Tensor(WT_trace.get_column("rain")).to(device)
 
 dataset = SlidingWindowDataset(signal, window_size, stride=1)
 loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
+model.train()
 for epoch in range(epochs):
     total_loss = 0
     
@@ -115,6 +117,14 @@ for epoch in range(epochs):
         total_loss += loss.item()
 
     print(f"Epoch {epoch:03d} | Loss {total_loss / len(loader):.6f}")
+
+model.eval()  
+
+with torch.no_grad():  
+    for x in DataLoader(dataset, batch_size=batch_size, shuffle=False):
+        _, z = model(x)   
+        
+        latentVec.append(z.cpu())
 
 
 
