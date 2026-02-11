@@ -72,6 +72,12 @@ class Trace:
             raise ValueError(f"Column '{column}' not found in dataframe")
         return self.df[column].to_numpy()
     
+    def get_columns(self, columns: list) -> np.ndarray:
+        """Return specific columns from the dataframe as a numpy array."""
+        for column in columns:
+            if column not in self.df.columns:
+                raise ValueError(f"Column '{column}' not found in dataframe")
+        return self.df[columns].to_numpy()
     
     def save_pattern_plot(self, signal, pattern_dict, filename="pattern_analysis.pdf"):
         """
