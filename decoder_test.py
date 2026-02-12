@@ -6,8 +6,8 @@ from src.trace_container.trace_obj import Trace
 
 lr=1e-3
 latent_dim=16
-window_size=256
-batch_size=64
+window_size=50
+batch_size=70
 epochs = 50
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -50,8 +50,6 @@ class Encoder(nn.Module):
         _, (h, _) = self.lstm(x)   # h: (1, B, 64)
         z = self.fc(h[-1])         # (B, latent_dim)
         return z
-
-
 
 class Decoder(nn.Module):
     def __init__(self, latent_dim, window_size):
@@ -100,13 +98,13 @@ WT_trace = Trace("./tests/WT/WT_Trace_Date_repetition.csv")
 signal = torch.Tensor(WT_trace.get_column("rain")).to(device)
 
 dataset = SlidingWindowDataset(signal, window_size, stride=1)
-loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+#loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
 
 model.train()
 for epoch in range(epochs):
     total_loss = 0
     
-    for x in tqdm(loader, desc=f"Epoch {epoch+1}/50", leave=False):
+    for x in tqdm(dataset, desc=f"Epoch {epoch+1}/{epochs}", leave=False):
         x_hat, _ = model(x)
         loss = criterion(x_hat, x)
 
@@ -125,6 +123,10 @@ with torch.no_grad():
         _, z = model(x)   
         
         latentVec.append(z.cpu())
+
+print(latentVec)
+
+
 
 
 
