@@ -10,27 +10,51 @@ latent_dim=16
 window_size=50
 epochs = 50
 
-# Hyper param encoder
+##### HYPER PARAM ENCODER ##### 
 
 ## CNN
-in_channels_first_layer = 1
-in_channels_second_layer = 16
+in_channels_first_layer_enc = 1
+in_channels_second_layer_enc = 16
 
-out_channels_first_layer = 16
-out_channels_second_layer = 32
+out_channels_first_layer_enc = 16
+out_channels_second_layer_enc = 32
 
-kernel_size_first_layer = 5
-kernel_size_second_layer = 5
+kernel_size_first_layer_enc = 5
+kernel_size_second_layer_enc = 5
 
-padding_first_layer = 2
-padding_second_layer = 2
+padding_first_layer_enc = 2
+padding_second_layer_enc = 2
 
 ## LSTM
-input_size_lstm = 32
-hidden_size_lstm = 64
+input_size_lstm_enc = 32
+hidden_size_lstm_enc = 64
 
 ## Linear layer
-in_feat_linea_layer = 64
+in_feat_linea_layer_enc = 64
+
+
+##### HYPER PARAM DECODER ##### 
+
+## Linear layer
+out_feat_linear_layer = 64
+
+## LSTM
+input_size_lstm_dec = 64
+hidden_size_lstm_dec = 32
+
+## CNN
+in_channels_first_layer_dec = 32
+in_channels_second_layer_dec = 16
+
+out_channels_first_layer_dec = 16
+out_channels_second_layer_dec = 1
+
+kernel_size_first_layer_dec = 5
+kernel_size_second_layer_dec = 5
+
+padding_first_layer_dec = 2
+padding_second_layer_dec = 2
+
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -54,17 +78,17 @@ class Encoder(nn.Module):
     def __init__(self, latent_dim):
         super().__init__()
         self.cnn = nn.Sequential(
-            nn.Conv1d(in_channels_first_layer, out_channels_first_layer, kernel_size=kernel_size_first_layer, padding=padding_first_layer),
+            nn.Conv1d(in_channels_first_layer_enc, out_channels_first_layer_enc, kernel_size=kernel_size_first_layer_enc, padding=padding_first_layer_enc),
             nn.ReLU(),
-            nn.Conv1d(in_channels_second_layer, out_channels_second_layer, kernel_size=kernel_size_second_layer, padding=padding_second_layer),
+            nn.Conv1d(in_channels_second_layer_enc, out_channels_second_layer_enc, kernel_size=kernel_size_second_layer_enc, padding=padding_second_layer_enc),
             nn.ReLU()
         ).to(device)
         self.lstm = nn.LSTM(
-            input_size=input_size_lstm,
-            hidden_size=hidden_size_lstm,
+            input_size=input_size_lstm_enc,
+            hidden_size=hidden_size_lstm_enc,
             batch_first=True
         ).to(device)
-        self.fc = nn.Linear(in_feat_linea_layer).to(device)
+        self.fc = nn.Linear(in_feat_linea_layer_enc).to(device)
 
     def forward(self, x):
         # x: (B, 1, W)
@@ -78,16 +102,16 @@ class Decoder(nn.Module):
     def __init__(self, latent_dim, window_size):
         super().__init__()
         self.window_size = window_size
-        self.fc = nn.Linear(latent_dim, 64).to(device)
+        self.fc = nn.Linear(latent_dim, out_feat_linear_layer).to(device)
         self.lstm = nn.LSTM(
-            input_size=64,
-            hidden_size=32,
+            input_size=input_size_lstm_dec,
+            hidden_size=hidden_size_lstm_dec,
             batch_first=True
         ).to(device)
         self.cnn = nn.Sequential(
-            nn.Conv1d(32, 16, kernel_size=5, padding=2),
+            nn.Conv1d(in_channels_first_layer_dec, out_channels_first_layer_dec, kernel_size=kernel_size_first_layer_dec, padding=padding_first_layer_dec),
             nn.ReLU(),
-            nn.Conv1d(16, 1, kernel_size=5, padding=2)
+            nn.Conv1d(in_channels_second_layer_dec, out_channels_second_layer_dec, kernel_size=kernel_size_second_layer_dec, padding=padding_second_layer_dec)
         ).to(device)
 
     def forward(self, z):
@@ -147,6 +171,7 @@ with torch.no_grad():
         
         latentVec.append(z.cpu())
 
+#TODO: calculate the distance between every windows in output from encoder
 print(latentVec)
 
 
