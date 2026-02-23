@@ -1,5 +1,7 @@
 import torch
 import torch.nn as nn
+import seaborn as sns
+import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from src.trace_container.trace_obj import Trace
@@ -8,7 +10,7 @@ from src.trace_container.trace_obj import Trace
 lr=1e-3
 latent_dim=16
 window_size=50
-epochs = 50
+epochs = 80
 
 ##### HYPER PARAM ENCODER ##### 
 
@@ -49,8 +51,8 @@ in_channels_second_layer_dec = 16
 out_channels_first_layer_dec = 16
 out_channels_second_layer_dec = 1
 
-kernel_size_first_layer_dec = 5
-kernel_size_second_layer_dec = 5
+kernel_size_first_layer_dec = 15
+kernel_size_second_layer_dec = 15
 
 padding_first_layer_dec = 2
 padding_second_layer_dec = 2
@@ -88,7 +90,7 @@ class Encoder(nn.Module):
             hidden_size=hidden_size_lstm_enc,
             batch_first=True
         ).to(device)
-        self.fc = nn.Linear(in_feat_linea_layer_enc).to(device)
+        self.fc = nn.Linear(in_feat_linea_layer_enc, latent_dim).to(device)
 
     def forward(self, x):
         # x: (B, 1, W)
@@ -136,6 +138,7 @@ class CNNLSTMAutoencoder(nn.Module):
         return x_hat, z
 
 latentVec = []
+epochLoss = []
 
 model = CNNLSTMAutoencoder(latent_dim, window_size)
 optimizer = torch.optim.Adam(model.parameters(), lr)
@@ -149,7 +152,7 @@ loader = DataLoader(dataset, batch_size=window_size, shuffle=False)
 
 model.train()
 for epoch in range(epochs):
-    total_loss = 0
+    totalLoss = 0
     
     for x in tqdm(loader, desc=f"Epoch {epoch+1}/{epochs}", leave=False):
         x_hat, _ = model(x)
@@ -159,9 +162,12 @@ for epoch in range(epochs):
         loss.backward()
         optimizer.step()
 
-        total_loss += loss.item()
+        totalLoss += loss.item()
+    
+    avgLoss = totalLoss/len(loader)
+    epochLoss.append(avgLoss)
 
-    print(f"Epoch {epoch:03d} | Loss {total_loss / len(loader):.6f}")
+    print(f"Epoch {epoch:03d} | Loss {totalLoss / len(loader):.6f}")
 
 model.eval()  
 
@@ -170,6 +176,19 @@ with torch.no_grad():
         _, z = model(x)   
         
         latentVec.append(z.cpu())
+
+
+sns.set(style="whitegrid")
+
+plt.figure(figsize=(8, 5))
+sns.lineplot(x=range(1, epochs+1), y=epochLoss)
+
+plt.xlabel("Epoch")
+plt.ylabel("Loss")
+plt.title("Training Loss")
+plt.tight_layout()
+plt.show()
+
 
 #TODO: calculate the distance between every windows in output from encoder
 print(latentVec)
