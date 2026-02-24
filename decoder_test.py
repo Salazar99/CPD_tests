@@ -1,4 +1,5 @@
 import torch
+import math
 import torch.nn as nn
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -51,8 +52,8 @@ in_channels_second_layer_dec = 16
 out_channels_first_layer_dec = 16
 out_channels_second_layer_dec = 1
 
-kernel_size_first_layer_dec = 15
-kernel_size_second_layer_dec = 15
+kernel_size_first_layer_dec = 5
+kernel_size_second_layer_dec = 5
 
 padding_first_layer_dec = 2
 padding_second_layer_dec = 2
@@ -175,10 +176,11 @@ with torch.no_grad():
     for x in DataLoader(dataset, batch_size=window_size, shuffle=False):
         _, z = model(x)   
         
+        # List of latent factors
         latentVec.append(z.cpu())
 
 
-sns.set(style="whitegrid")
+sns.set_theme(style="whitegrid")
 
 plt.figure(figsize=(8, 5))
 sns.lineplot(x=range(1, epochs+1), y=epochLoss)
@@ -189,9 +191,25 @@ plt.title("Training Loss")
 plt.tight_layout()
 plt.show()
 
+#TODO: Understand why i have a list of 6 elements and inside 50 rows(latent vec) each
 
-#TODO: calculate the distance between every windows in output from encoder
-print(latentVec)
+# Stack the latent factors with torch cat
+latentFactors = torch.cat(latentVec, dim=0)
+
+# Calculate the distance between every latent vector
+distances = torch.cdist(latentFactors,latentFactors,p=2)
+
+print(distances)
+
+sns.set_theme(style="whitegrid")
+
+sns.scatterplot(x=range(1, len(distances[0])+1),y=distances[0])
+
+plt.xlabel("Vectors distance from the first one")
+plt.ylabel("Euclidean distance")
+plt.title("Vectors distance from First")
+plt.tight_layout()
+plt.show()
 
 
 
